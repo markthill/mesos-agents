@@ -20,7 +20,7 @@ data "template_file" "user_data" {
 //}
 
 resource "aws_launch_template" "agent" {
-  name = "mesos_${var.mesos_type}_lt_${var.cluster_group}_${var.group_version}_${terraform.workspace}_${var.cluster_id}"
+  name = "mesos_${var.mesos_type}_lt_${var.cluster_group}_group-${var.group_version}_${terraform.workspace}_${var.cluster_id}"
   image_id      = var.mesos_image_id
   instance_type = "t2.micro"
   key_name = var.key_pair_name
@@ -53,7 +53,7 @@ resource "aws_autoscaling_group" "mesos_asg" {
 
     tag {
         key                 = "Name"
-        value               = "mesos_${var.mesos_type}_asg_${var.cluster_group}_${terraform.workspace}_${var.cluster_id}"
+        value               = "mesos_${var.mesos_type}_asg_${var.cluster_group}_group-${var.group_version}_${terraform.workspace}_${var.cluster_id}"
         propagate_at_launch = true
     }
     tag {

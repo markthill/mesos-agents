@@ -56,7 +56,7 @@ module "mesos-agent" {
     instance_profile_name = data.aws_iam_instance_profile.mesos_ec2_instance_profile.name
     security_groups = [data.aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
-    cluster_id = "c328d8515ddb214d"
+    cluster_id = var.cluster_id
     asg_min_size = var.minimum_capacity
     asg_max_size = var.maximum_capacity
     asg_desired_capacity = var.desired_capacity
