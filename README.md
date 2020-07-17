@@ -20,8 +20,8 @@ rm -rf .terraform
 export CLUSTER_GROUP=devops && export GROUP_VERSION=1 && bash -c 'terraform init -input=false -backend-config "key=cluster/mesos/agenta-$CLUSTER_GROUP-v$GROUP_VERSION.tfstate"'
 terraform workspace new development
 terraform workspace select development
-terraform apply -var="cluster_group=devops" -var="group_version=1"
-terraform destroy -var="cluster_group=devops" -var="group_version=1"
+terraform apply -var="cluster_group=devops" -var="group_version=1" -var="cluster_id=8b6a28477082e794"
+terraform destroy -var="cluster_group=devops" -var="group_version=1" -var="cluster_id=8b6a28477082e794"
 ```
 
 Create a group of servers for arroe

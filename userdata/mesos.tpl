@@ -1,10 +1,21 @@
 #!/bin/bash
 
-apt-get update
-apt-get install -y awscli
-apt install -y jq
-export AWS_DEFAULT_REGION=us-east-1
 
+apt-get update
+
+apt install unzip
+
+# Install v2 of aws CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
+
+apt install -y jq
+
+AWS_REGION=us-east-1
+export AWS_DEFAULT_REGION=$AWS_REGION
+
+ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId)
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
 CLUSTER_ID=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=ClusterId" | jq -r '.Tags[].Value')
 CLUSTER_GROUP=$(aws ec2 describe-tags --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=ClusterGroup" | jq -r '.Tags[].Value')
@@ -61,7 +72,7 @@ echo "export LIBPROCESS_SSL_CERT_FILE=/data/pki/mesos/cert-np.pem" >> /home/ubun
 echo "alias start-zoo=\"/data/apps/zookeeper/apache-zookeeper-3.6.1-bin/bin/zkServer.sh start\"" >> /home/ubuntu/.profile
 echo "alias stop-zoo=\"/data/apps/zookeeper/apache-zookeeper-3.6.1-bin/bin/zkServer.sh stop\"" >> /home/ubuntu/.profile
 echo "alias start-mesos-master=\"/data/apps/mesos/mesos-1.9.0/build/bin/mesos-master.sh --zk=zk://$ZOOKEEPER_IP:2181/mesos --quorum=1 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir >> /data/apps/mesos/logs/mesos-master.log 2>&1 &\"" >> /home/ubuntu/.profile
-echo "alias start-mesos-agent=\"/data/apps/mesos/mesos-1.9.0/build/bin/mesos-agent.sh --master=$MASTER_IP:5050 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir --systemd_enable_support=false --containerizers=docker --attributes=\\\"availability_zone:$AVAILABILITY_ZONE;cluster_group:$CLUSTER_GROUP\\\" --executor_environment_variables=file:///data/apps/mesos/conf/executor_environment_variables.json --resources=\\\"ports(*):[80-81, 8000-9000, 31000-32000]\\\" >> /data/apps/mesos/logs/mesos-agent.log 2>&1 &\"" >> /home/ubuntu/.profile
+echo "alias start-mesos-agent=\"/data/apps/mesos/mesos-1.9.0/build/bin/mesos-agent.sh --master=$MASTER_IP:5050 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir --systemd_enable_support=false --containerizers=docker --attributes=\\\"availability_zone:$AVAILABILITY_ZONE;cluster_group:$CLUSTER_GROUP\\\" --docker=/data/apps/docker --docker_config=/home/ubuntu/.docker/config.json --executor_environment_variables=file:///data/apps/mesos/conf/executor_environment_variables.json --resources=\\\"ports(*):[80-81, 8000-9000, 31000-32000]\\\" >> /data/apps/mesos/logs/mesos-agent.log 2>&1 &\"" >> /home/ubuntu/.profile
 echo "alias start-marathon=\"JAVA_OPTS=\"-Dconfig.file=/data/apps/marathon/conf/application.conf\" /data/apps/marathon/marathon-1.8.222-86475ddac/bin/marathon --https_port 8082 --ssl_keystore_path /data/pki/mesos/mesoskeystore.jks --ssl_keystore_password foobar --master zk://$ZOOKEEPER_IP:2181/mesos --zk zk://$ZOOKEEPER_IP:2181/marathon  --hostname $PUBLIC_HOSTNAME --disable_http >> /data/apps/marathon/logs/marathon.log 2>&1 &\"" >> /home/ubuntu/.profile
 
 
@@ -74,13 +85,22 @@ usermod -aG docker ubuntu
 
 mkdir /data
 mount --bind /home/ubuntu/ /data
+
+echo 'sudo docker "$@"' >> /home/ubuntu/apps/docker
+chmod 744 /data/apps/docker
+
 chown -R ubuntu:ubuntu /home/ubuntu/apps/
 chown -R ubuntu:ubuntu /home/ubuntu/pki/
 
-if [ "$MESOS_TYPE" == "mesos-Master" ]; then
-  runuser -l ubuntu -c "/data/apps/mesos/mesos-1.9.0/build/bin/mesos-master.sh --zk=zk://$ZOOKEEPER_IP:2181/mesos --quorum=1 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir >> /data/apps/mesos/logs/mesos-master.log 2>&1 &"
-elif [ "$MESOS_TYPE" == "mesos-Agent" ]; then
-  runuser -l ubuntu -c "/data/apps/mesos/mesos-1.9.0/build/bin/mesos-agent.sh --master=$MASTER_IP:5050 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir --systemd_enable_support=false --containerizers=docker --attributes=\"availability_zone:$AVAILABILITY_ZONE;cluster_group:$CLUSTER_GROUP\" --executor_environment_variables=file:///data/apps/mesos/conf/executor_environment_variables.json --resources=\"ports(*):[80-81, 8000-9000, 31000-32000]\" >> /data/apps/mesos/logs/mesos-agent.log 2>&1 &"
-else
-  runuser -l ubuntu -c "JAVA_OPTS=\"-Dconfig.file=/data/apps/marathon/conf/application.conf\" /data/apps/marathon/marathon-1.8.222-86475ddac/bin/marathon --https_port 8082 --ssl_keystore_path /data/pki/mesos/mesoskeystore.jks --ssl_keystore_password foobar --master zk://$ZOOKEEPER_IP:2181/mesos --zk zk://$ZOOKEEPER_IP:2181/marathon --hostname $PUBLIC_HOSTNAME  --disable_http >> /data/apps/marathon/logs/marathon.log 2>&1 &"
-fi
+
+chmod 744 /data/apps/docker
+
+ECR_LOGIN="aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+runuser -l ubuntu -c "$ECR_LOGIN"
+
+crontab -u ubuntu -l > /tmp/mycron
+echo "0 * * * * $ECR_LOGIN" >> /tmp/mycron
+crontab -u ubuntu /tmp/mycron
+runuser -l ubuntu -c "source /home/ubuntu/.profile"
+
+runuser -l ubuntu -c "/data/apps/mesos/mesos-1.9.0/build/bin/mesos-agent.sh --master=$MASTER_IP:5050 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir --systemd_enable_support=false --containerizers=docker --attributes=\"availability_zone:$AVAILABILITY_ZONE;cluster_group:$CLUSTER_GROUP\" --docker=/data/apps/docker --docker_config=/home/ubuntu/.docker/config.json --executor_environment_variables=file:///data/apps/mesos/conf/executor_environment_variables.json --resources=\"ports(*):[80-81, 8000-9000, 31000-32000]\" >> /data/apps/mesos/logs/mesos-agent.log 2>&1 &"
