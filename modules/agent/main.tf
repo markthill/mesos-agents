@@ -2,6 +2,10 @@
 
 data "template_file" "user_data" {
     template = file("${path.root}/userdata/mesos.tpl")
+
+    vars = {
+        default_region = var.region
+    }
 }
 
 //resource "aws_launch_configuration" "mesos_launch_config" {
@@ -22,9 +26,9 @@ data "template_file" "user_data" {
 resource "aws_launch_template" "agent" {
   name = "mesos_${var.mesos_type}_lt_${var.cluster_group}_group-${var.group_version}_${terraform.workspace}_${var.cluster_id}"
   image_id      = var.mesos_image_id
-  instance_type = "t2.micro"
+  instance_type = var.instance_type
   key_name = var.key_pair_name
-  user_data = base64encode(data.template_file.user_data.template)
+  user_data = base64encode(data.template_file.user_data.rendered)
   vpc_security_group_ids = var.security_groups
   iam_instance_profile {
     name = var.instance_profile_name
@@ -33,6 +37,7 @@ resource "aws_launch_template" "agent" {
     device_name = "/dev/sda1"
 
     ebs {
+      delete_on_termination = true
       volume_size = 15
     }
   }
@@ -40,7 +45,7 @@ resource "aws_launch_template" "agent" {
 
 resource "aws_autoscaling_group" "mesos_asg" {
     name = "mesos_${var.mesos_type}_asg_${var.cluster_group}_${var.group_version}_${terraform.workspace}_${var.cluster_id}"
-    availability_zones = ["us-east-1b", "us-east-1c", "us-east-1d"]
+    availability_zones = var.azs
     # launch_configuration = aws_launch_configuration.mesos_launch_config.name
     min_size = var.asg_min_size
     max_size = var.asg_max_size

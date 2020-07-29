@@ -12,7 +12,7 @@ unzip awscliv2.zip
 
 apt install -y jq
 
-AWS_REGION=us-east-1
+AWS_REGION=${default_region}
 export AWS_DEFAULT_REGION=$AWS_REGION
 
 ACCOUNT_ID=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .accountId)
@@ -57,7 +57,7 @@ apt-get -y install build-essential python-dev python-six python-virtualenv libcu
 apt install -y libssl-dev
 
 mkdir /home/ubuntu/.aws/
-printf "[default]\nregion = us-east-1" >> /home/ubuntu/.aws/config
+printf "[default]\nregion = $AWS_REGION" >> /home/ubuntu/.aws/config
 
 echo "akka { ssl-config.loose.disableHostnameVerification=true }" >> /home/ubuntu/apps/marathon/conf/application.conf
 echo "export MESOS_NATIVE_JAVA_LIBRARY=/data/apps/mesos/mesos-1.9.0/build/src/.libs/libmesos.so" >> /home/ubuntu/.profile
@@ -95,7 +95,7 @@ chown -R ubuntu:ubuntu /home/ubuntu/pki/
 
 chmod 744 /data/apps/docker
 
-ECR_LOGIN="aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com"
+ECR_LOGIN="aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 runuser -l ubuntu -c "$ECR_LOGIN"
 
 crontab -u ubuntu -l > /tmp/mycron

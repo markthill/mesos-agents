@@ -1,7 +1,9 @@
 terraform {
   backend "s3" {
     bucket = "terraform-remote-state-mesos"
+    key    = "cluster/mesos/terraform-agents.tfstate"
     region = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
   }
 }
 
@@ -17,23 +19,23 @@ terraform {
 
 provider "aws" {
   profile = "default"
-  region  = "us-east-1"
+  region  = var.default_region
 }
 
 data "aws_vpc" "default_vpc" {
   tags = { "Default" = "true" }
 }
 
-data "aws_subnet" "subnet_us_east_1d" {
-  filter {
-    name   = "vpc-id"
-    values = ["${data.aws_vpc.default_vpc.id}"] # insert value here
-  }
-  filter {
-    name = "availability-zone"
-    values = ["us-east-1d"]
-  }
-}
+//data "aws_subnet" "subnet_us_east_1d" {
+//  filter {
+//    name   = "vpc-id"
+//    values = ["${data.aws_vpc.default_vpc.id}"] # insert value here
+//  }
+//  filter {
+//    name = "availability-zone"
+//    values = ["us-east-1d"]
+//  }
+//}
 
 data "http" "myip" {
   url = "http://ipv4.icanhazip.com"
@@ -51,8 +53,8 @@ module "mesos-agent" {
     source = "./modules/agent"
 
     mesos_type = "Agent"
-    mesos_image_id = var.mesos_image_id
-    key_pair_name = var.key_pair_name
+    mesos_image_id = var.mesos_image_id[var.default_region]
+    key_pair_name = "${var.key_pair_name}-${var.default_region}"
     instance_profile_name = data.aws_iam_instance_profile.mesos_ec2_instance_profile.name
     security_groups = [data.aws_security_group.mesos_security_group.id]
     instance_type = var.mesos_instance_type
@@ -63,4 +65,6 @@ module "mesos-agent" {
     cluster_group = var.cluster_group
     group_version = var.group_version
     environment = terraform.workspace
+    azs = var.availability_zones[var.default_region]
+    region = var.default_region
 }
