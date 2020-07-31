@@ -1,5 +1,5 @@
 variable "default_region" {
-  default = "us-east-2"
+  default = "us-east-1"
 }
 variable "default_az" {
   default = "a"
@@ -16,7 +16,7 @@ variable "cluster_id" {
 variable "cluster_group" {type = string }
 variable "group_version" {type = string }
 variable "desired_capacity" {
-  default = "2"
+  default = "1"
 }
 variable "minimum_capacity" {
   default = "0"
