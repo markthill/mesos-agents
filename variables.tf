@@ -16,7 +16,7 @@ variable "cluster_id" {
 variable "cluster_group" {type = string }
 variable "group_version" {type = string }
 variable "desired_capacity" {
-  default = "1"
+  default = "3"
 }
 variable "minimum_capacity" {
   default = "0"

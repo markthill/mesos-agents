@@ -69,6 +69,7 @@ echo "export LIBPROCESS_SSL_HOSTNAME_VALIDATION_SCHEME=openssl" >> /home/ubuntu/
 echo "export LIBPROCESS_SSL_ENABLE_DOWNGRADE=false" >> /home/ubuntu/.profile
 echo "export LIBPROCESS_SSL_KEY_FILE=/data/pki/mesos/key-np.pem" >> /home/ubuntu/.profile
 echo "export LIBPROCESS_SSL_CERT_FILE=/data/pki/mesos/cert-np.pem" >> /home/ubuntu/.profile
+echo "export AVAILABILITY_ZONE=$AVAILABILITY_ZONE" >> /home/ubuntu/.profile
 echo "alias start-zoo=\"/data/apps/zookeeper/apache-zookeeper-3.6.1-bin/bin/zkServer.sh start\"" >> /home/ubuntu/.profile
 echo "alias stop-zoo=\"/data/apps/zookeeper/apache-zookeeper-3.6.1-bin/bin/zkServer.sh stop\"" >> /home/ubuntu/.profile
 echo "alias start-mesos-master=\"/data/apps/mesos/mesos-1.9.0/build/bin/mesos-master.sh --zk=zk://$ZOOKEEPER_IP:2181/mesos --quorum=1 --hostname=$PUBLIC_HOSTNAME --work_dir=/data/apps/mesos/work-dir >> /data/apps/mesos/logs/mesos-master.log 2>&1 &\"" >> /home/ubuntu/.profile
